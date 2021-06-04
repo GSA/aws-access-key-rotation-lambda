@@ -12,10 +12,10 @@ resource "aws_lambda_function" "lambda" {
 
   environment {
     variables = {
-      REGION         = local.region
-      PREFIX         = var.prefix
-      USERNAMES      = join(",", var.usernames)
-      KMS_KEY_ALIAS  = aws_kms_alias.lambda.name
+      REGION        = local.region
+      PREFIX        = var.prefix
+      USERNAMES     = join(",", var.usernames)
+      KMS_KEY_ALIAS = aws_kms_alias.lambda.name
     }
   }
 

@@ -1,9 +1,9 @@
 locals {
   user_arns = [
-    for name in var.usernames: "arn:aws:iam::${local.account_id}:user/${name}"
+    for name in var.usernames : "arn:aws:iam::${local.account_id}:user/${name}"
   ]
   secret_arns = [
-    for name in var.usernames: "arn:aws:secretsmanager:${local.region}:${local.account_id}:secret:${var.prefix}-${name}*"
+    for name in var.usernames : "arn:aws:secretsmanager:${local.region}:${local.account_id}:secret:${var.prefix}-${name}*"
   ]
 }
 
