@@ -32,7 +32,7 @@ type secret struct {
 	SecretID   string `json:"-"`
 }
 
-func (s *secret) ToJson() (string, error) {
+func (s *secret) ToJSON() (string, error) {
 	b, err := json.Marshal(s)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal secret to JSON: %q -> %v", s.SecretName, err)
@@ -168,7 +168,7 @@ func (a *App) storeKeys() error {
 func (a *App) storeKey(s *secret) error {
 	svc := secretsmanager.NewFromConfig(a.cfg)
 
-	secret, err := s.ToJson()
+	secret, err := s.ToJSON()
 	if err != nil {
 		return err
 	}
