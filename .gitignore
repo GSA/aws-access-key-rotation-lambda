@@ -4,6 +4,7 @@
 *.tfstate*
 # Module directory
 .terraform/
+.terraform.lock.hcl
 
 ## Go ##
 vendor/

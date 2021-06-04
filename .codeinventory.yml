@@ -1,12 +1,11 @@
-name: 'GSA/[PROJECT]'
-description: '[PROJECT DESCRIPTION]'
+name: 'GSA/aws-access-key-rotation-lambda'
+description: 'Rotate AWS access keys for a list of users on a schedule and store them in secretsmanager'
 license: cc0-1.0
 openSourceProject: 1
 governmentWideReuseProject: 1
 tags:
     - open-source
     - opensource
-    - grace
     - devsecops
 contact:
     email: grace-staff@gsa.gov
