@@ -3,10 +3,10 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/GSA/ciss-utils/aws/sm"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -24,27 +24,11 @@ type Settings struct {
 	Region      string   `env:"REGION" envDefault:"us-east-1"`
 }
 
-type secret struct {
-	Username   string `json:"-"`
-	KeyID      string `json:"aws_access_key_id"`
-	Secret     string `json:"aws_secret_access_key"`
-	SecretName string `json:"-"`
-	SecretID   string `json:"-"`
-}
-
-func (s *secret) ToJSON() (string, error) {
-	b, err := json.Marshal(s)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal secret to JSON: %q -> %v", s.SecretName, err)
-	}
-	return string(b), nil
-}
-
 // App is a wrapper for running Lambda
 type App struct {
 	settings *Settings
 	cfg      aws.Config
-	secrets  []*secret
+	secrets  []*sm.Secret
 	KmsKeyID string
 }
 
@@ -165,7 +149,7 @@ func (a *App) storeKeys() error {
 	return nil
 }
 
-func (a *App) storeKey(s *secret) error {
+func (a *App) storeKey(s *sm.Secret) error {
 	svc := secretsmanager.NewFromConfig(a.cfg)
 
 	secret, err := s.ToJSON()
@@ -196,7 +180,7 @@ func (a *App) storeKey(s *secret) error {
 	return nil
 }
 
-func (a *App) createNewKey(s *secret) error {
+func (a *App) createNewKey(s *sm.Secret) error {
 	svc := iam.NewFromConfig(a.cfg)
 	output, err := svc.CreateAccessKey(context.TODO(), &iam.CreateAccessKeyInput{
 		UserName: aws.String(s.Username),
@@ -205,11 +189,12 @@ func (a *App) createNewKey(s *secret) error {
 		return fmt.Errorf("failed to create access key for user %q -> %v", s.Username, err)
 	}
 	s.KeyID = aws.ToString(output.AccessKey.AccessKeyId)
-	s.Secret = aws.ToString(output.AccessKey.SecretAccessKey)
+	s.Type = "aws"
+	s.Secret = fmt.Sprintf("%s:%s", aws.ToString(output.AccessKey.AccessKeyId), aws.ToString(output.AccessKey.SecretAccessKey))
 	return nil
 }
 
-func (a *App) cleanupOldKey(s *secret) error {
+func (a *App) cleanupOldKey(s *sm.Secret) error {
 	svc := iam.NewFromConfig(a.cfg)
 
 	output, err := svc.ListAccessKeys(context.TODO(), &iam.ListAccessKeysInput{
@@ -252,7 +237,7 @@ func (a *App) resolveUsers() error {
 		var found bool
 		for _, u := range users {
 			if strings.EqualFold(u, name) {
-				a.secrets = append(a.secrets, &secret{
+				a.secrets = append(a.secrets, &sm.Secret{
 					Username: u,
 				})
 				found = true
