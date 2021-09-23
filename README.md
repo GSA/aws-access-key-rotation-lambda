@@ -21,7 +21,7 @@ The secrets created for each provided IAM username will be prefixed with the pro
 | Name | Description | Type | Default | Required |
 |------|-------------|:----:|:-----:|:-----:|
 | usernames | The list of IAM usernames to be rotated | list(string) | `[]` | yes |
-| schedule\_expression | Cloudwatch schedule expression for when to run inventory | string | `"cron(0 * * * *)"` | no |
+| schedule\_expression | Cloudwatch schedule expression for when to key rotation | string | `"cron(0 0 * * ? *)"` | no |
 | project | The project name used as a prefix for all resources | string | `"iaas"` | no |
 | appenv | The targeted application environment used in resource names | string | `"development"` | no |
 | prefix | The name prefix used to signify a secret should be replicated | string | `"g-"` | no |

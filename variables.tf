@@ -6,7 +6,7 @@ variable "usernames" {
 variable "schedule_expression" {
   type        = string
   description = "(optional) Cloudwatch schedule expression for when to run the access key rotation"
-  default     = "cron(0/10 * * * ? *)"
+  default     = "cron(0 0 * * ? *)"
 }
 
 variable "project" {
