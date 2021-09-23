@@ -29,6 +29,7 @@ resource "aws_iam_role" "role" {
 data "aws_iam_policy_document" "policy" {
   statement {
     effect = "Allow"
+    #tfsec:ignore:aws-iam-no-policy-wildcards
     actions = [
       "kms:Encrypt",
       "kms:Decrypt",
@@ -46,6 +47,7 @@ data "aws_iam_policy_document" "policy" {
       "iam:ListAccessKeys",
       "kms:ListAliases"
     ]
+    #tfsec:ignore:aws-iam-no-policy-wildcards
     resources = ["*"]
   }
   statement {
@@ -74,6 +76,7 @@ data "aws_iam_policy_document" "policy" {
       "logs:CreateLogStream",
       "logs:CreateLogGroup"
     ]
+    #tfsec:ignore:aws-iam-no-policy-wildcards
     resources = ["*"]
   }
 }

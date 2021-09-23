@@ -19,6 +19,10 @@ resource "aws_lambda_function" "lambda" {
     }
   }
 
+  tracing_config {
+    mode = "PassThrough"
+  }
+
   depends_on = [aws_iam_role_policy_attachment.attach]
 }
 
