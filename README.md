@@ -6,8 +6,8 @@ The secrets created for each provided IAM username will be prefixed with the pro
 
 ```
 {
-    "aws_access_key_id": "AAAAAAAAAAAAAAAAAAAAAAAAAA",
-    "aws_sec\ret_access_key": "BBBBBBBBBBBBBBBBBBBBBBBBB"
+    "Value": "AAAAAAAAAAAAAAAAAAAAAAAAAA:BBBBBBBBBBBBBBBBBBBBBBBBB",
+    "Type": "aws"
 }
 ```
 

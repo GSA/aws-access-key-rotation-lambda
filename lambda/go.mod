@@ -3,7 +3,7 @@ module github.com/GSA/aws-access-key-rotation-lambda/lambda
 go 1.16
 
 require (
-	github.com/GSA/ciss-utils v0.0.3
+	github.com/GSA/ciss-utils v0.0.6
 	github.com/aws/aws-lambda-go v1.26.0
 	github.com/aws/aws-sdk-go-v2 v1.9.0
 	github.com/aws/aws-sdk-go-v2/config v1.8.1

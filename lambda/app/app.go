@@ -111,10 +111,10 @@ func (a *App) resolveKeys() error {
 	}
 	// set the desired secret name and secret ID if one already exists
 	for _, s := range a.secrets {
-		s.SecretName = fmt.Sprintf("%s-%s", a.settings.Prefix, s.Username)
+		s.Name = fmt.Sprintf("%s-%s", a.settings.Prefix, s.Username)
 		for _, entry := range allSecrets {
-			if strings.EqualFold(s.SecretName, aws.ToString(entry.Name)) {
-				s.SecretID = aws.ToString(entry.ARN)
+			if strings.EqualFold(s.Name, aws.ToString(entry.Name)) {
+				s.ID = aws.ToString(entry.ARN)
 			}
 		}
 	}
@@ -157,25 +157,25 @@ func (a *App) storeKey(s *sm.Secret) error {
 		return err
 	}
 
-	if len(s.SecretID) == 0 {
+	if len(s.ID) == 0 {
 		_, err := svc.CreateSecret(context.TODO(), &secretsmanager.CreateSecretInput{
-			Name:         aws.String(s.SecretName),
+			Name:         aws.String(s.Name),
 			KmsKeyId:     aws.String(a.KmsKeyID),
 			SecretString: aws.String(secret),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create secret with name: %q -> %v", s.SecretName, err)
+			return fmt.Errorf("failed to create secret with name: %q -> %v", s.Name, err)
 		}
 		return nil
 	}
 
 	_, err = svc.UpdateSecret(context.TODO(), &secretsmanager.UpdateSecretInput{
-		SecretId:     aws.String(s.SecretID),
+		SecretId:     aws.String(s.ID),
 		KmsKeyId:     aws.String(a.KmsKeyID),
 		SecretString: aws.String(secret),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to update secret with name: %q -> %v", s.SecretName, err)
+		return fmt.Errorf("failed to update secret with name: %q -> %v", s.Name, err)
 	}
 	return nil
 }
@@ -190,7 +190,7 @@ func (a *App) createNewKey(s *sm.Secret) error {
 	}
 	s.KeyID = aws.ToString(output.AccessKey.AccessKeyId)
 	s.Type = "aws"
-	s.Secret = fmt.Sprintf("%s:%s", aws.ToString(output.AccessKey.AccessKeyId), aws.ToString(output.AccessKey.SecretAccessKey))
+	s.Value = fmt.Sprintf("%s:%s", aws.ToString(output.AccessKey.AccessKeyId), aws.ToString(output.AccessKey.SecretAccessKey))
 	return nil
 }
 
