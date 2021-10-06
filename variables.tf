@@ -1,6 +1,7 @@
 variable "usernames" {
   type        = list(string)
   description = "The IAM usernames to be rotated"
+  default     = ["deployer-read"]
 }
 
 variable "schedule_expression" {
@@ -23,7 +24,7 @@ variable "appenv" {
 
 variable "prefix" {
   type        = string
-  description = "(optional) The name prefix used to signify a secret should be replicated (default: g-)"
+  description = "(optional) The name prefix used to signify a secret should be rotated (default: g-)"
   default     = "g-"
 }
 
