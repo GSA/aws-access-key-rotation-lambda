@@ -57,4 +57,4 @@ ifneq ($(strip $(hooksPath)),.github/hooks)
 endif
 
 $(TFSEC):
-	go get -u github.com/liamg/tfsec/cmd/tfsec
+	go install github.com/aquasecurity/tfsec/cmd/tfsec@latest

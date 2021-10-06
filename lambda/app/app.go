@@ -3,16 +3,14 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/GSA/ciss-utils/aws/sm"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
-	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	smt "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	env "github.com/caarlos0/env/v6"
 )
 
@@ -24,27 +22,11 @@ type Settings struct {
 	Region      string   `env:"REGION" envDefault:"us-east-1"`
 }
 
-type secret struct {
-	Username   string `json:"-"`
-	KeyID      string `json:"aws_access_key_id"`
-	Secret     string `json:"aws_secret_access_key"`
-	SecretName string `json:"-"`
-	SecretID   string `json:"-"`
-}
-
-func (s *secret) ToJSON() (string, error) {
-	b, err := json.Marshal(s)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal secret to JSON: %q -> %v", s.SecretName, err)
-	}
-	return string(b), nil
-}
-
 // App is a wrapper for running Lambda
 type App struct {
 	settings *Settings
 	cfg      aws.Config
-	secrets  []*secret
+	secrets  []*sm.Secret
 	KmsKeyID string
 }
 
@@ -96,7 +78,7 @@ func (a *App) Run() error {
 	}
 
 	// update or create secrets in secrets manager for all access keys
-	err = a.storeKeys()
+	err = sm.StoreSecrets(a.cfg, a.secrets, a.KmsKeyID)
 	if err != nil {
 		return err
 	}
@@ -121,82 +103,23 @@ func (a *App) updateKeys() error {
 }
 
 func (a *App) resolveKeys() error {
-	allSecrets, err := a.getSecrets()
+	allSecrets, err := sm.FilterSecretsByPrefix(a.cfg, "")
 	if err != nil {
 		return fmt.Errorf("failed to list all secrets: %v", err)
 	}
 	// set the desired secret name and secret ID if one already exists
 	for _, s := range a.secrets {
-		s.SecretName = fmt.Sprintf("%s-%s", a.settings.Prefix, s.Username)
+		s.Name = fmt.Sprintf("%s%s", a.settings.Prefix, s.Username)
 		for _, entry := range allSecrets {
-			if strings.EqualFold(s.SecretName, aws.ToString(entry.Name)) {
-				s.SecretID = aws.ToString(entry.ARN)
+			if strings.EqualFold(s.Name, aws.ToString(entry.Name)) {
+				s.ID = aws.ToString(entry.ARN)
 			}
 		}
 	}
 	return nil
 }
 
-func (a *App) getSecrets() ([]smt.SecretListEntry, error) {
-	var allSecrets []smt.SecretListEntry
-
-	svc := secretsmanager.NewFromConfig(a.cfg)
-	input := &secretsmanager.ListSecretsInput{}
-	p := secretsmanager.NewListSecretsPaginator(svc, input)
-
-	for p.HasMorePages() {
-		output, err := p.NextPage(context.TODO())
-		if err != nil {
-			return nil, fmt.Errorf("failed to list secrets: %v", err)
-		}
-		allSecrets = append(allSecrets, output.SecretList...)
-	}
-
-	return allSecrets, nil
-}
-
-func (a *App) storeKeys() error {
-	for _, s := range a.secrets {
-		err := a.storeKey(s)
-		if err != nil {
-			return fmt.Errorf("failed to store key: %v", err)
-		}
-	}
-	return nil
-}
-
-func (a *App) storeKey(s *secret) error {
-	svc := secretsmanager.NewFromConfig(a.cfg)
-
-	secret, err := s.ToJSON()
-	if err != nil {
-		return err
-	}
-
-	if len(s.SecretID) == 0 {
-		_, err := svc.CreateSecret(context.TODO(), &secretsmanager.CreateSecretInput{
-			Name:         aws.String(s.SecretName),
-			KmsKeyId:     aws.String(a.KmsKeyID),
-			SecretString: aws.String(secret),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create secret with name: %q -> %v", s.SecretName, err)
-		}
-		return nil
-	}
-
-	_, err = svc.UpdateSecret(context.TODO(), &secretsmanager.UpdateSecretInput{
-		SecretId:     aws.String(s.SecretID),
-		KmsKeyId:     aws.String(a.KmsKeyID),
-		SecretString: aws.String(secret),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update secret with name: %q -> %v", s.SecretName, err)
-	}
-	return nil
-}
-
-func (a *App) createNewKey(s *secret) error {
+func (a *App) createNewKey(s *sm.Secret) error {
 	svc := iam.NewFromConfig(a.cfg)
 	output, err := svc.CreateAccessKey(context.TODO(), &iam.CreateAccessKeyInput{
 		UserName: aws.String(s.Username),
@@ -204,12 +127,12 @@ func (a *App) createNewKey(s *secret) error {
 	if err != nil {
 		return fmt.Errorf("failed to create access key for user %q -> %v", s.Username, err)
 	}
-	s.KeyID = aws.ToString(output.AccessKey.AccessKeyId)
-	s.Secret = aws.ToString(output.AccessKey.SecretAccessKey)
+	s.Type = "aws"
+	s.Value = fmt.Sprintf("%s:%s", aws.ToString(output.AccessKey.AccessKeyId), aws.ToString(output.AccessKey.SecretAccessKey))
 	return nil
 }
 
-func (a *App) cleanupOldKey(s *secret) error {
+func (a *App) cleanupOldKey(s *sm.Secret) error {
 	svc := iam.NewFromConfig(a.cfg)
 
 	output, err := svc.ListAccessKeys(context.TODO(), &iam.ListAccessKeysInput{
@@ -238,7 +161,6 @@ func (a *App) cleanupOldKey(s *secret) error {
 			return fmt.Errorf("failed to delete access key for user: %q -> %v", s.Username, err)
 		}
 	}
-
 	return nil
 }
 
@@ -252,7 +174,7 @@ func (a *App) resolveUsers() error {
 		var found bool
 		for _, u := range users {
 			if strings.EqualFold(u, name) {
-				a.secrets = append(a.secrets, &secret{
+				a.secrets = append(a.secrets, &sm.Secret{
 					Username: u,
 				})
 				found = true

@@ -3,7 +3,7 @@ locals {
     for name in var.usernames : "arn:aws:iam::${local.account_id}:user/${name}"
   ]
   secret_arns = [
-    for name in var.usernames : "arn:aws:secretsmanager:${local.region}:${local.account_id}:secret:${var.prefix}-${name}*"
+    for name in var.usernames : "arn:aws:secretsmanager:${local.region}:${local.account_id}:secret:${var.prefix}${name}*"
   ]
 }
 
@@ -29,6 +29,7 @@ resource "aws_iam_role" "role" {
 data "aws_iam_policy_document" "policy" {
   statement {
     effect = "Allow"
+    #tfsec:ignore:aws-iam-no-policy-wildcards
     actions = [
       "kms:Encrypt",
       "kms:Decrypt",
@@ -46,6 +47,7 @@ data "aws_iam_policy_document" "policy" {
       "iam:ListAccessKeys",
       "kms:ListAliases"
     ]
+    #tfsec:ignore:aws-iam-no-policy-wildcards
     resources = ["*"]
   }
   statement {
@@ -74,12 +76,13 @@ data "aws_iam_policy_document" "policy" {
       "logs:CreateLogStream",
       "logs:CreateLogGroup"
     ]
+    #tfsec:ignore:aws-iam-no-policy-wildcards
     resources = ["*"]
   }
 }
 
 resource "aws_iam_policy" "policy" {
-  name        = local.app_name
+  name        = "${local.app_name}-lambda"
   description = "Policy to allow lambda permissions for ${local.app_name}"
   policy      = data.aws_iam_policy_document.policy.json
 }
@@ -145,7 +148,7 @@ data "aws_iam_policy_document" "reader_policy" {
 }
 
 resource "aws_iam_policy" "reader_policy" {
-  name        = local.app_name
+  name        = "${local.app_name}-reader"
   description = "Policy to allow permissions for ${local.app_name} secret readers"
   policy      = data.aws_iam_policy_document.reader_policy.json
 }
